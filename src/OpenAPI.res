@@ -1,4 +1,47 @@
-type info
+/** 
+Contact information for the exposed API.
+ */
+type contact = {
+  // The identifying name of the contact person/organization.
+  name?: string,
+  // The URL pointing to the contact information. MUST be in the format of a URL.
+  url?: string,
+  // The email address of the contact person/organization. MUST be in the format of an email address.
+  email?: string,
+}
+
+/** 
+License information for the exposed API.
+ */
+type license = {
+  // The license name used for the API.
+  name: string,
+  // An SPDX license expression for the API. The identifier field is mutually exclusive of the url field.
+  identifier?: string,
+  // A URL to the license used for the API. This MUST be in the form of a URL. The url field is mutually exclusive of the identifier field.
+  url?: string,
+}
+
+/**
+The object provides metadata about the API. The metadata MAY be used by the clients if needed, and MAY be presented in editing or documentation generation tools for convenience.
+ */
+type info = {
+  // The title of the API.
+  title: string,
+  // A short summary of the API.
+  summary?: string,
+  // A description of the API. CommonMark syntax MAY be used for rich text representation.
+  description?: string,
+  // A URL to the Terms of Service for the API. This MUST be in the form of a URL.
+  termsOfService?: string,
+  // The contact information for the exposed API.
+  contact?: contact,
+  // The license information for the exposed API.
+  license?: license,
+  // The version of the OpenAPI document (which is distinct from the OpenAPI Specification version or the API implementation version).
+  version: string,
+}
+
 type server
 type paths
 type webhooks
@@ -9,7 +52,9 @@ type externalDocumentation
 
 /**
 Typed interfaces for OpenAPI 3.1.0  
-see https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.1.0.md
+see https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.1.0.md  
+  
+This is the root object of the OpenAPI document.
  */
 type t = {
   // This string MUST be the version number of the OpenAPI Specification that the OpenAPI document uses. The openapi field SHOULD be used by tooling to interpret the OpenAPI document. This is not related to the API info.version string.
