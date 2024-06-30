@@ -1,0 +1,19 @@
+{
+  "name": "rescript-openapi",
+  "namespace": false,
+  "bs-dev-dependencies": ["@dzakh/rescript-ava"],
+  "suffix": ".res.js",
+  "package-specs": {
+    "module": "commonjs",
+    "in-source": true
+  },
+  "sources": [
+    {
+      "dir": "src"
+    },
+    {
+      "dir": "__tests__",
+      "type": "dev"
+    }
+  ]
+}
