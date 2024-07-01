@@ -66,7 +66,12 @@ type server = {
   variables?: dict<serverVariable>,
 }
 
-type externalDocumentation
+type externalDocumentation = {
+  // A description of the target documentation. CommonMark syntax MAY be used for rich text representation.
+  description?: string,
+  // The URL for the target documentation. This MUST be in the form of a URL.
+  url: string,
+}
 
 type parameterOrReference
 
