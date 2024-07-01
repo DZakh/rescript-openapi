@@ -66,12 +66,84 @@ type server = {
   variables?: dict<serverVariable>,
 }
 
-type paths
+type externalDocumentation
+
+type parameterOrReference
+
+type requestBodyOrReference
+
+type responses
+
+type callbackOrReference
+
+type securityRequirement
+
+/**
+Describes a single API operation on a path.
+ */
+type operation = {
+  // A list of tags for API documentation control. Tags can be used for logical grouping of operations by resources or any other qualifier.
+  tags?: array<string>,
+  // A short summary of what the operation does.
+  summary?: string,
+  // A verbose explanation of the operation behavior. CommonMark syntax MAY be used for rich text representation.
+  description?: string,
+  // Additional external documentation for this operation.
+  externalDocs?: externalDocumentation,
+  // Unique string used to identify the operation. The id MUST be unique among all operations described in the API. The operationId value is case-sensitive. Tools and libraries MAY use the operationId to uniquely identify an operation, therefore, it is RECOMMENDED to follow common programming naming conventions.
+  operationId: string,
+  // A list of parameters that are applicable for this operation. If a parameter is already defined at the Path Item, the new definition will override it but can never remove it. The list MUST NOT include duplicated parameters. A unique parameter is defined by a combination of a name and location. The list can use the Reference Object to link to parameters that are defined at the OpenAPI Object's components/parameters.
+  parameters?: array<parameterOrReference>,
+  // The request body applicable for this operation. The requestBody is fully supported in HTTP methods where the HTTP 1.1 specification RFC7231 has explicitly defined semantics for request bodies. In other cases where the HTTP spec is vague (such as GET, HEAD and DELETE), requestBody is permitted but does not have well-defined semantics and SHOULD be avoided if possible.
+  requestBody?: requestBodyOrReference,
+  // The list of possible responses as they are returned from executing this operation.
+  responses: responses,
+  // A map of possible out-of band callbacks related to the parent operation. The key is a unique identifier for the Callback Object. Each value in the map is a Callback Object that describes a request that may be initiated by the API provider and the expected responses.
+  callbacks?: dict<callbackOrReference>,
+  // Declares this operation to be deprecated. Consumers SHOULD refrain from usage of the declared operation. Default value is false.
+  deprecated?: bool,
+  // A declaration of which security mechanisms can be used for this operation. The list of values includes alternative security requirement objects that can be used. Only one of the security requirement objects need to be satisfied to authorize a request. To make security optional, an empty security requirement ({}) can be included in the array. This definition overrides any declared top-level security. To remove a top-level security declaration, an empty array can be used.
+  security?: array<securityRequirement>,
+  // An alternative server array to service this operation. If an alternative server object is specified at the Path Item Object or Root level, it will be overridden by this value.
+  servers?: array<server>,
+}
+
+/**
+Describes the operations available on a single path. A Path Item MAY be empty, due to ACL constraints. The path itself is still exposed to the documentation viewer but they will not know which operations and parameters are available.
+ */
+type pathItem = {
+  // Allows for a referenced definition of this path item. The referenced structure MUST be in the form of a Path Item Object. In case a Path Item Object field appears both in the defined object and the referenced object, the behavior is undefined. See the rules for resolving Relative References.
+  @as("$ref")
+  ref?: string,
+  // An optional, string summary, intended to apply to all operations in this path.
+  summary?: string,
+  // An optional, string description, intended to apply to all operations in this path. CommonMark syntax MAY be used for rich text representation.
+  description?: string,
+  // A definition of a GET operation on this path.
+  get?: operation,
+  // A definition of a PUT operation on this path.
+  put?: operation,
+  // A definition of a POST operation on this path.
+  post?: operation,
+  // A definition of a DELETE operation on this path.
+  delete?: operation,
+  // A definition of a OPTIONS operation on this path.
+  options?: operation,
+  // A definition of a HEAD operation on this path.
+  head?: operation,
+  // A definition of a PATCH operation on this path.
+  patch?: operation,
+  // A definition of a TRACE operation on this path.
+  trace?: operation,
+  // An alternative server array to service all operations in this path.
+  servers?: array<server>,
+  // A list of parameters that are applicable for all the operations described under this path. These parameters can be overridden at the operation level, but cannot be removed there. The list MUST NOT include duplicated parameters. A unique parameter is defined by a combination of a name and location. The list can use the Reference Object to link to parameters that are defined at the OpenAPI Object's components/parameters.
+  parameters?: array<parameterOrReference>,
+}
+
 type webhooks
 type components
-type securityRequirement
 type tag
-type externalDocumentation
 
 /**
 Typed interfaces for OpenAPI 3.1.0  
@@ -89,7 +161,7 @@ type t = {
   // An array of Server Objects, which provide connectivity information to a target server. If the servers property is not provided, or is an empty array, the default value would be a Server Object with a url value of `/`.
   servers?: array<server>,
   // The available paths and operations for the API.
-  paths?: paths,
+  paths?: dict<pathItem>,
   // The incoming webhooks that MAY be received as part of this API and that the API consumer MAY choose to implement. Closely related to the callbacks feature, this section describes requests initiated other than by an API call, for example by an out of band registration. The key name is a unique string to refer to each webhook, while the (optionally referenced) Path Item Object describes a request that may be initiated by the API provider and the expected responses. An example is available.
   webhooks?: webhooks,
   // An element to hold various schemas for the document.
