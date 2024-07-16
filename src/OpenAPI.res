@@ -1,7 +1,36 @@
 @@warning("-30")
 
+%%private(external magic: 'a => 'b = "%identity")
+
 module WithReference = {
   type t<'a>
+  type reference<'a> = {
+    // The reference identifier. This MUST be in the form of a URI.
+    @as("$ref")
+    ref: string,
+    // A short summary which by default SHOULD override that of the referenced component. If the referenced object-type does not allow a summary field, then this field has no effect.
+    summary?: string,
+    // A description which by default SHOULD override that of the referenced component. CommonMark syntax MAY be used for rich text representation. If the referenced object-type does not allow a description field, then this field has no effect.
+    description?: string,
+  }
+  type tagged<'a> =
+    | Object('a)
+    | Reference(reference<'a>)
+
+  external object: 'a => t<'a> = "%identity"
+  external reference: reference<'a> => t<'a> = "%identity"
+
+  let isReference = (_withReference: t<'a>): bool => {
+    %raw(`"$ref" in _withReference`)
+  }
+
+  let classify = (withRef: t<'a>): tagged<'a> => {
+    if withRef->isReference {
+      Reference(withRef->(magic: t<'item> => reference<'item>))
+    } else {
+      Object(withRef->(magic: t<'item> => 'item))
+    }
+  }
 }
 
 /** 
@@ -79,9 +108,36 @@ type externalDocumentation = {
   url: string,
 }
 
-type parameter
+/** 
+There are four possible parameter locations specified by the in field:
 
-type schema
+path - Used together with Path Templating, where the parameter value is actually part of the operation's URL. This does not include the host or base path of the API. For example, in /items/{itemId}, the path parameter is itemId.
+query - Parameters that are appended to the URL. For example, in /items?id=###, the query parameter is id.
+header - Custom headers that are expected as part of the request. Note that RFC7230 states header names are case insensitive.
+cookie - Used to pass a specific cookie value to the API.
+ */
+type parameterLocation =
+  | @as("query") Query
+  | @as("header") Header
+  | @as("path") Path
+  | @as("cookie") Cookie
+
+/** 
+ * The style of a parameter.
+ * Describes how the parameter value will be serialized.
+ * (serialization is not implemented yet)
+ * Specification:
+ * https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.1.0.md#style-values
+ */
+type parameterStyle = [
+  | #matrix
+  | #label
+  | #form
+  | #simple
+  | #spaceDelimited
+  | #pipeDelimited
+  | #deepObject
+]
 
 type example = {
   // Short description for the example.
@@ -94,12 +150,48 @@ type example = {
   externalValue?: string,
 }
 
-type header
+type schema = JSONSchema.t
 
-/**
+/** 
+Base fields for parameter object
+ */
+type rec baseParameter = {
+  // A brief description of the parameter. This could contain examples of use. CommonMark syntax MAY be used for rich text representation.
+  description?: string,
+  // Determines whether this parameter is mandatory. If the parameter location is "path", this property is REQUIRED and its value MUST be true. Otherwise, the property MAY be included and its default value is false.
+  required?: bool,
+  // Specifies that a parameter is deprecated and SHOULD be transitioned out of usage. Default value is false.
+  deprecated?: bool,
+  // Sets the ability to pass empty-valued parameters. This is valid only for query parameters and allows sending a parameter with an empty value. Default value is false. If style is used, and if behavior is n/a (cannot be serialized), the value of allowEmptyValue SHALL be ignored. Use of this property is NOT RECOMMENDED, as it is likely to be removed in a later revision.
+  allowEmptyValue?: bool,
+  // Describes how the parameter value will be serialized depending on the type of the parameter value. Default values (based on value of in): for query - form; for path - simple; for header - simple; for cookie - form.
+  style?: parameterStyle,
+  // When this is true, parameter values of type array or object generate separate parameters for each value of the array or key-value pair of the map. For other types of parameters this property has no effect. When style is form, the default value is true. For all other styles, the default value is false.
+  explode?: bool,
+  // Determines whether the parameter value SHOULD allow reserved characters, as defined by RFC3986 :/?#[]@!$&'()*+,;= to be included without percent-encoding. This property only applies to parameters with an in value of query. The default value is false.
+  allowReserved?: bool,
+  // The schema defining the type used for the parameter.
+  schema?: schema,
+  // Examples of the parameter's potential value. Each example SHOULD contain a value in the correct format as specified in the parameter encoding. The examples field is mutually exclusive of the example field. Furthermore, if referencing a schema that contains an example, the examples value SHALL override the example provided by the schema.
+  examples?: dict<WithReference.t<example>>,
+  // Example of the parameter's potential value. The example SHOULD match the specified schema and encoding properties if present. The example field is mutually exclusive of the examples field. Furthermore, if referencing a schema that contains an example, the example value SHALL override the example provided by the schema. To represent examples of media types that cannot naturally be represented in JSON or YAML, a string value can contain the example with escaping where necessary.
+  example?: option<Js.Json.t>,
+  content?: dict<WithReference.t<mediaType>>,
+}
+
+/*
+The Header Object follows the structure of the Parameter Object with the following changes:
+
+name MUST NOT be specified, it is given in the corresponding headers map.
+in MUST NOT be specified, it is implicitly in header.
+All traits that are affected by the location MUST be applicable to a location of header (for example, style).
+ */
+and header = baseParameter
+
+/*
 A single encoding definition applied to a single schema property.
  */
-type encoding = {
+and encoding = {
   // The Content-Type for encoding a specific property. Default value depends on the property type: for object - application/json; for array – the default is defined based on the inner type; for all other cases the default is application/octet-stream. The value can be a specific media type (e.g. application/json), a wildcard media type (e.g. image/*), or a comma-separated list of the two types.
   contentType?: string,
   // A map allowing additional information to be provided as headers, for example Content-Disposition. Content-Type is described separately and SHALL be ignored in this section. This property SHALL be ignored if the request body media type is not a multipart.
@@ -112,10 +204,10 @@ type encoding = {
   allowReserved?: bool,
 }
 
-/** 
+/*
 Each Media Type Object provides schema and examples for the media type identified by its key.
  */
-type mediaType = {
+and mediaType = {
   // The schema defining the content of the request, response, or parameter.
   schema?: schema,
   // Example of the media type. The example object SHOULD be in the correct format as specified by the media type. The example field is mutually exclusive of the examples field. Furthermore, if referencing a schema which contains an example, the example value SHALL override the example provided by the schema.
@@ -124,6 +216,23 @@ type mediaType = {
   examples?: dict<WithReference.t<example>>,
   // A map between a property name and its encoding information. The key, being the property name, MUST exist in the schema as a property. The encoding object SHALL only apply to requestBody objects when the media type is multipart or application/x-www-form-urlencoded.
   encoding?: dict<encoding>,
+}
+
+/**
+Describes a single operation parameter.
+
+A unique parameter is defined by a combination of a name and location.
+ */
+type parameter = {
+  ...baseParameter,
+  // The name of the parameter. Parameter names are case sensitive.
+  // If in is "path", the name field MUST correspond to a template expression occurring within the path field in the Paths Object. See Path Templating for further information.
+  // If in is "header" and the name field is "Accept", "Content-Type" or "Authorization", the parameter definition SHALL be ignored.
+  // For all other cases, the name corresponds to the parameter name used by the in property.
+  name: string,
+  // The location of the parameter. Possible values are "query", "header", "path" or "cookie".
+  @as("in")
+  in_: parameterLocation,
 }
 
 /**
@@ -138,7 +247,41 @@ type requestBody = {
   required?: bool,
 }
 
-type response
+/**
+The Link object represents a possible design-time link for a response. The presence of a link does not guarantee the caller's ability to successfully invoke it, rather it provides a known relationship and traversal mechanism between responses and other operations.
+
+Unlike dynamic links (i.e. links provided in the response payload), the OAS linking mechanism does not require link information in the runtime response.
+
+For computing links, and providing instructions to execute them, a runtime expression is used for accessing values in an operation and using them as parameters while invoking the linked operation.
+ */
+type link = {
+  // A relative or absolute URI reference to an OAS operation. This field is mutually exclusive of the operationId field, and MUST point to an Operation Object. Relative operationRef values MAY be used to locate an existing Operation Object in the OpenAPI definition. See the rules for resolving Relative References.
+  operationRef?: string,
+  // The name of an existing, resolvable OAS operation, as defined with a unique operationId. This field is mutually exclusive of the operationRef field.
+  operationId?: string,
+  // A map representing parameters to pass to an operation as specified with operationId or identified via operationRef. The key is the parameter name to be used, whereas the value can be a constant or an expression to be evaluated and passed to the linked operation. The parameter name can be qualified using the parameter location [{in}.]{name} for operations that use the same parameter name in different locations (e.g. path.id).
+  parameters?: dict<unknown>, // TODO: The value should be typed as Any | {expression}
+  // A literal value or {expression} to use as a request body when calling the target operation.
+  requestBody?: unknown, // TODO: The value should be typed as Any | {expression}
+  // A description of the link. CommonMark syntax MAY be used for rich text representation.
+  description?: string,
+  // A server object to be used by the target operation.
+  server?: server,
+}
+
+/**
+Describes a single response from an API Operation, including design-time, static links to operations based on the response.
+ */
+type response = {
+  // A description of the response. CommonMark syntax MAY be used for rich text representation.
+  description: string,
+  // Maps a header name to its definition. RFC7230 states header names are case insensitive. If a response header is defined with the name "Content-Type", it SHALL be ignored.
+  headers?: dict<WithReference.t<header>>,
+  // A map containing descriptions of potential response payloads. The key is a media type or media type range and the value describes it. For responses that match multiple keys, only the most specific key is applicable. e.g. text/plain overrides text/*
+  content?: dict<mediaType>,
+  // A map of operations links that can be followed from the response. The key of the map is a short name for the link, following the naming constraints of the names for Component Objects.
+  links?: dict<WithReference.t<link>>,
+}
 
 /* https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.1.0.md#security-requirement-object */
 type securityRequirement = dict<array<string>>
@@ -259,28 +402,6 @@ type securityScheme = {
   // OpenId Connect URL to discover OAuth2 configuration values. This MUST be in the form of a URL. The OpenID Connect standard requires the use of TLS.
   openIdConnectUrl: string,
 } // TODO: Use variant type
-
-/**
-The Link object represents a possible design-time link for a response. The presence of a link does not guarantee the caller's ability to successfully invoke it, rather it provides a known relationship and traversal mechanism between responses and other operations.
-
-Unlike dynamic links (i.e. links provided in the response payload), the OAS linking mechanism does not require link information in the runtime response.
-
-For computing links, and providing instructions to execute them, a runtime expression is used for accessing values in an operation and using them as parameters while invoking the linked operation.
- */
-type link = {
-  // A relative or absolute URI reference to an OAS operation. This field is mutually exclusive of the operationId field, and MUST point to an Operation Object. Relative operationRef values MAY be used to locate an existing Operation Object in the OpenAPI definition. See the rules for resolving Relative References.
-  operationRef?: string,
-  // The name of an existing, resolvable OAS operation, as defined with a unique operationId. This field is mutually exclusive of the operationRef field.
-  operationId?: string,
-  // A map representing parameters to pass to an operation as specified with operationId or identified via operationRef. The key is the parameter name to be used, whereas the value can be a constant or an expression to be evaluated and passed to the linked operation. The parameter name can be qualified using the parameter location [{in}.]{name} for operations that use the same parameter name in different locations (e.g. path.id).
-  parameters?: dict<unknown>, // TODO: The value should be typed as Any | {expression}
-  // A literal value or {expression} to use as a request body when calling the target operation.
-  requestBody?: unknown, // TODO: The value should be typed as Any | {expression}
-  // A description of the link. CommonMark syntax MAY be used for rich text representation.
-  description?: string,
-  // A server object to be used by the target operation.
-  server?: server,
-}
 
 /** 
 Holds a set of reusable objects for different aspects of the OAS. All objects defined within the components object will have no effect on the API unless they are explicitly referenced from properties outside the components object.

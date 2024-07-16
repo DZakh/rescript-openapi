@@ -2,7 +2,28 @@
 'use strict';
 
 
-var WithReference = {};
+function isReference(_withReference) {
+  return ("$ref" in _withReference);
+}
+
+function classify(withRef) {
+  if (isReference(withRef)) {
+    return {
+            TAG: "Reference",
+            _0: withRef
+          };
+  } else {
+    return {
+            TAG: "Object",
+            _0: withRef
+          };
+  }
+}
+
+var WithReference = {
+  isReference: isReference,
+  classify: classify
+};
 
 exports.WithReference = WithReference;
 /* No side effect */

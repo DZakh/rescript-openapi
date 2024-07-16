@@ -1,7 +1,7 @@
 {
   "name": "rescript-openapi",
-  "version": "0.1.0",
-  "description": "Typesafe OpenAPI for ReScript",
+  "version": "0.2.0",
+  "description": "🕸️ Typesafe OpenAPI for ReScript",
   "keywords": [
     "rescript",
     "openapi",
@@ -40,10 +40,12 @@
   "devDependencies": {
     "@dzakh/rescript-ava": "3.0.0",
     "ava": "5.2.0",
+    "c8": "8.0.1",
     "rescript": "11.1.2",
-    "c8": "8.0.1"
+    "rescript-json-schema": "6.1.0"
   },
   "peerDependencies": {
-    "rescript": "11.x"
+    "rescript": "11.x",
+    "rescript-json-schema": "6.x"
   }
 }
