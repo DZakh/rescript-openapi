@@ -469,3 +469,238 @@ type t = {
   // Additional external documentation.
   externalDocs?: externalDocumentation,
 }
+
+module Mutable = {
+  type readOnly = t
+
+  module WithReference = {
+    type t<'a>
+    type reference<'a> = {
+      @as("$ref")
+      mutable ref: string,
+      mutable summary?: string,
+      mutable description?: string,
+    }
+    type tagged<'a> =
+      | Object('a)
+      | Reference(reference<'a>)
+
+    external object: 'a => t<'a> = "%identity"
+    external reference: reference<'a> => t<'a> = "%identity"
+
+    let isReference = (_withReference: t<'a>): bool => {
+      %raw(`"$ref" in _withReference`)
+    }
+
+    let classify = (withRef: t<'a>): tagged<'a> => {
+      if withRef->isReference {
+        Reference(withRef->(magic: t<'item> => reference<'item>))
+      } else {
+        Object(withRef->(magic: t<'item> => 'item))
+      }
+    }
+  }
+
+  type contact = {
+    mutable name?: string,
+    mutable url?: string,
+    mutable email?: string,
+  }
+
+  type license = {
+    mutable name: string,
+    mutable identifier?: string,
+    mutable url?: string,
+  }
+
+  type info = {
+    mutable title: string,
+    mutable summary?: string,
+    mutable description?: string,
+    mutable termsOfService?: string,
+    mutable contact?: contact,
+    mutable license?: license,
+    mutable version: string,
+  }
+
+  type serverVariable = {
+    mutable default: string,
+    mutable enum?: array<string>,
+    mutable description?: string,
+  }
+
+  type server = {
+    mutable url: string,
+    mutable description?: string,
+    mutable variables?: dict<serverVariable>,
+  }
+
+  type externalDocumentation = {
+    mutable description?: string,
+    mutable url: string,
+  }
+
+  type example = {
+    mutable summary?: string,
+    mutable description?: string,
+    mutable value?: unknown,
+    mutable externalValue?: string,
+  }
+
+  type rec baseParameter = {
+    mutable description?: string,
+    mutable required?: bool,
+    mutable deprecated?: bool,
+    mutable allowEmptyValue?: bool,
+    mutable style?: parameterStyle,
+    mutable explode?: bool,
+    mutable allowReserved?: bool,
+    mutable schema?: schema,
+    mutable examples?: dict<WithReference.t<example>>,
+    mutable example?: option<Js.Json.t>,
+    mutable content?: dict<WithReference.t<mediaType>>,
+  }
+
+  and header = baseParameter
+
+  and encoding = {
+    mutable contentType?: string,
+    mutable headers?: dict<WithReference.t<header>>,
+    mutable style?: string,
+    mutable explode?: bool,
+    mutable allowReserved?: bool,
+  }
+
+  and mediaType = {
+    mutable schema?: schema,
+    mutable example?: unknown,
+    mutable examples?: dict<WithReference.t<example>>,
+    mutable encoding?: dict<encoding>,
+  }
+
+  type parameter = {
+    mutable name: string,
+    @as("in")
+    mutable in_: parameterLocation,
+    ...baseParameter,
+  }
+
+  type requestBody = {
+    mutable description?: string,
+    mutable content: dict<mediaType>,
+    mutable required?: bool,
+  }
+
+  type link = {
+    mutable operationRef?: string,
+    mutable operationId?: string,
+    mutable parameters?: dict<unknown>, // TODO: The value should be typed as Any | {expression}
+    mutable requestBody?: unknown, // TODO: The value should be typed as Any | {expression}
+    mutable description?: string,
+    mutable server?: server,
+  }
+
+  type response = {
+    mutable description: string,
+    mutable headers?: dict<WithReference.t<header>>,
+    mutable content?: dict<mediaType>,
+    mutable links?: dict<WithReference.t<link>>,
+  }
+
+  type rec pathItem = {
+    @as("$ref")
+    mutable ref?: string,
+    mutable summary?: string,
+    mutable description?: string,
+    mutable get?: operation,
+    mutable put?: operation,
+    mutable post?: operation,
+    mutable delete?: operation,
+    mutable options?: operation,
+    mutable head?: operation,
+    mutable patch?: operation,
+    mutable trace?: operation,
+    mutable servers?: array<server>,
+    mutable parameters?: array<WithReference.t<parameter>>,
+  }
+  and operation = {
+    mutable tags?: array<string>,
+    mutable summary?: string,
+    mutable description?: string,
+    mutable externalDocs?: externalDocumentation,
+    mutable operationId?: string,
+    mutable parameters?: array<WithReference.t<parameter>>,
+    mutable requestBody?: WithReference.t<requestBody>,
+    mutable responses?: dict<WithReference.t<response>>,
+    mutable callbacks?: dict<WithReference.t<callback>>,
+    mutable deprecated?: bool,
+    mutable security?: array<securityRequirement>,
+    mutable servers?: array<server>,
+  }
+  and callback = dict<WithReference.t<pathItem>>
+
+  type oauthFlow = {
+    mutable authorizationUrl: string,
+    mutable tokenUrl: string,
+    mutable refreshUrl?: string,
+    mutable scopes: dict<string>,
+  }
+
+  type oauthFlows = {
+    mutable implicit?: oauthFlow,
+    mutable password?: oauthFlow,
+    mutable clientCredentials?: oauthFlow,
+    mutable authorizationCode?: oauthFlow,
+  }
+
+  type securityScheme = {
+    @as("type")
+    mutable type_: string,
+    mutable description?: string,
+    mutable name: string,
+    @as("in")
+    mutable in_: string,
+    mutable scheme: string,
+    mutable bearerFormat?: string,
+    mutable flows: oauthFlows,
+    mutable openIdConnectUrl: string,
+  } // TODO: Use variant type
+
+  type components = {
+    mutable schemas?: dict<schema>,
+    mutable responses?: dict<WithReference.t<response>>,
+    mutable parameters?: dict<WithReference.t<parameter>>,
+    mutable examples?: dict<WithReference.t<example>>,
+    mutable requestBodies?: dict<WithReference.t<requestBody>>,
+    mutable headers?: dict<WithReference.t<header>>,
+    mutable securitySchemes?: dict<WithReference.t<securityScheme>>,
+    mutable links?: dict<WithReference.t<link>>,
+    mutable callbacks?: dict<WithReference.t<callback>>,
+    mutable pathItems?: dict<WithReference.t<pathItem>>,
+  }
+
+  type tag = {
+    mutable name: string,
+    mutable description?: string,
+    mutable externalDocs?: externalDocumentation,
+  }
+
+  type t = {
+    mutable openapi: string,
+    mutable info: info,
+    mutable jsonSchemaDialect?: string,
+    mutable servers?: array<server>,
+    mutable paths?: dict<pathItem>,
+    mutable webhooks?: dict<WithReference.t<pathItem>>,
+    mutable components?: components,
+    mutable security?: array<securityRequirement>,
+    mutable tags?: array<tag>,
+    mutable externalDocs?: externalDocumentation,
+  }
+
+  external fromReadOnly: readOnly => t = "%identity"
+  external toReadOnly: t => readOnly = "%identity"
+
+  @val
+  external mixin: (t, readOnly) => unit = "Object.assign"
+}
