@@ -25,5 +25,33 @@ var WithReference = {
   classify: classify
 };
 
+function isReference$1(_withReference) {
+  return ("$ref" in _withReference);
+}
+
+function classify$1(withRef) {
+  if (isReference$1(withRef)) {
+    return {
+            TAG: "Reference",
+            _0: withRef
+          };
+  } else {
+    return {
+            TAG: "Object",
+            _0: withRef
+          };
+  }
+}
+
+var WithReference$1 = {
+  isReference: isReference$1,
+  classify: classify$1
+};
+
+var Mutable = {
+  WithReference: WithReference$1
+};
+
 exports.WithReference = WithReference;
+exports.Mutable = Mutable;
 /* No side effect */
